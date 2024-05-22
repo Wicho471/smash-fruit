@@ -1,7 +1,8 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-let mousePos = { x: 0, y: 0 };
+ctx.imageSmoothingEnabled = false;
+
 
 const fruits = [];
 let score = 0;
@@ -15,6 +16,15 @@ const heartSprites = {
     noHeart: 'img/no_heart.png'
 };
 const fruitTypes = ['apple', 'avocado', 'coconut', 'dragonFruit', 'greenApple', 'kiwi', 'lemon', 'orange', 'peach', 'pomegranate', 'watermelon']; // Add other fruits here
+const cursorImagePath = 'img/mouse/katana.png';
+const cursorDefaultImagePath = 'img/mouse/dedo.png';
+
+var fuente = new FontFace('MinecraftFont', 'url(font/Minecraft.ttf)');
+fuente.load().then(function (loadedFont) {
+    document.fonts.add(loadedFont);
+}).catch(function (error) {
+    console.error('Error al cargar la fuente:', error);
+});
 
 //Funcion para cargar el fondo
 function drawBackground() {
@@ -45,10 +55,12 @@ class Fruta {
         this.speed = speed;
         this.cut = false;
         this.width = canvas.width / 12; // Adjust fruit size based on canvas size
-        this.height = canvas.height / 12;
+        this.height = canvas.width / 12;
         this.gravity = 0.04;
         this.vx = speed * Math.cos(angle);
         this.vy = -speed * Math.sin(angle);
+        this.rotation = 0;
+        this.rotationSpeed = (Math.random() * 0.1) * (Math.random() < 0.5 ? 1 : -1); // Random rotation speed and direction
     }
 
     draw() {
@@ -115,12 +127,34 @@ function checkCut(x, y) {
     });
 }
 
+// Añadir la función para verificar si el cursor está sobre alguna fruta
+function checkCursorHover(x, y) {
+    let cursorOverFruit = false;
+    fruits.forEach(fruit => {
+        const distX = x - fruit.x;
+        const distY = y - fruit.y;
+        if (distX >= 0 && distX <= fruit.width && distY >= 0 && distY <= fruit.height) {
+            if(!fruit.cut){
+                cursorOverFruit = true;
+            }
+        }
+    });
+
+    if (cursorOverFruit) {
+        canvas.style.cursor = `url(${cursorImagePath}), auto`;
+    } else {
+        canvas.style.cursor = `url(${cursorDefaultImagePath}), auto`;
+    }
+}
+
 // Function to draw the score and lives
 function drawHUD() {
-    ctx.font = '20px Arial';
+    ctx.font = '30px MinecraftFont';
+    ctx.shadowColor = 'black';
+
     ctx.fillStyle = '#FFF';
     ctx.fillText('Score: ' + score, 10, 30);
-    ctx.fillText('High Score: ' + highScore, canvas.width / 2 - 50, 30);
+    ctx.fillText('High Score: ' + highScore, canvas.width / 2 - 100, 30);
 
     for (let i = 0; i < 3; i++) {
         const heartImg = new Image();
@@ -140,6 +174,7 @@ function gameLoop() {
             lives -= 1;
             fruits.splice(index, 1);
             if (lives === 0) {
+
                 alert('Game Over');
                 document.location.reload();
             }
@@ -149,8 +184,8 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// Generate fruits continuously
-setInterval(generateFruits, 5000);
+// Generate fruits continuouslye
+setInterval(generateFruits, Math.floor(Math.random() * 4000 + 2500));
 
 // Event listeners
 canvas.addEventListener("click", (e) => {
@@ -158,9 +193,16 @@ canvas.addEventListener("click", (e) => {
     let xmouse = e.clientX - rect.left;
     let ymouse = e.clientY - rect.top;
     checkCut(xmouse, ymouse);
-    console.log("X:" + xmouse, "X:" + ymouse);
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    let xmouse = e.clientX - rect.left;
+    let ymouse = e.clientY - rect.top;
+    checkCursorHover(xmouse, ymouse);
 });
 
 // Initialize game
 loadImages();
-gameLoop(); 
+gameLoop();
+generateFruits();
