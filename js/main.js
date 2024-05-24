@@ -3,12 +3,14 @@ const ctx = canvas.getContext('2d');
 
 ctx.imageSmoothingEnabled = false;
 
+let level = 1;
+const toNextLevel = 5;
 
 const fruits = [];
 let score = 0;
 let highScore = localStorage.getItem('highScore') || 0;
 let lives = 3;
-const maxFruits = 5;
+const maxFruits = 10;
 const fruitSprites = {};
 const heartSprites = {
     normal: 'img/heart.png',
@@ -26,14 +28,12 @@ fuente.load().then(function (loadedFont) {
     console.error('Error al cargar la fuente:', error);
 });
 
-//Funcion para cargar el fondo
 function drawBackground() {
     var background = new Image();
     background.src = "img/background.png";
     ctx.drawImage(background, 0, 0, canvas.width, canvas.height);
 }
 
-// Funcion para cargar los sprites de las frutas
 function loadImages() {
     fruitTypes.forEach(fruit => {
         fruitSprites[fruit] = {
@@ -45,22 +45,20 @@ function loadImages() {
 
 // Class for fruits
 class Fruta {
-    constructor(type, x, y, angle, speed) {
+    constructor(type, x, y, angle, speed, cut, currentSprite) {
         this.type = type;
         this.sprites = fruitSprites[type];
-        this.currentSprite = 'normal';
+        this.currentSprite = currentSprite;
         this.x = x;
         this.y = y;
         this.angle = angle;
         this.speed = speed;
-        this.cut = false;
-        this.width = canvas.width / 12; // Adjust fruit size based on canvas size
+        this.cut = cut;
+        this.width = canvas.width / 12; 
         this.height = canvas.width / 12;
         this.gravity = 0.04;
         this.vx = speed * Math.cos(angle);
         this.vy = -speed * Math.sin(angle);
-        this.rotation = 0;
-        this.rotationSpeed = (Math.random() * 0.1) * (Math.random() < 0.5 ? 1 : -1); // Random rotation speed and direction
     }
 
     draw() {
@@ -73,18 +71,20 @@ class Fruta {
         if (!this.cut) {
             this.x += this.vx;
             this.y += this.vy;
-            this.vy += this.gravity; // Apply gravity for parabolic motion
+            this.rotation += this.rotationSpeed;
+            this.vy += this.gravity; 
         } else {
             this.x += this.vx;
             this.y += this.vy;
-            this.gravity *= 1.03;
-            this.vy += this.gravity; // Apply gravity for parabolic motion
+            this.gravity *= 1.05;
+            this.rotation += this.rotationSpeed;
+            this.vy += this.gravity; 
         }
         this.draw();
     }
 
     cutFruit() {
-        if (this.cut) return; // Avoid cutting the fruit again
+        if (this.cut) return; 
         this.cut = true;
         this.currentSprite = 'cut';
         score += 1;
@@ -92,12 +92,24 @@ class Fruta {
             highScore = score;
             localStorage.setItem('highScore', highScore);
         }
+        const cutSound = new Audio('fx/cut.mp3');
+        cutSound.play();
+
+        const newRandomAngle = Math.random() < 0.5 ? 1 : -1; 
+        const fruta1 = new Fruta(this.type, this.x, this.y, this.angle + newRandomAngle, this.speed, true, 'cut');
+        const fruta2 = new Fruta(this.type, this.x, this.y, this.angle - newRandomAngle, this.speed, true, 'cut');
+        fruits.push(fruta1);
+        fruits.push(fruta2);
+  
+        const index = fruits.indexOf(this);
+        if (index > -1) {
+            fruits.splice(index, 1);
+        }
     }
 }
 
-// Function to generate random fruits
 function generateFruits() {
-    const numberOfFruits = Math.floor(Math.random() * maxFruits) + 1;
+    const numberOfFruits = Math.min(Math.floor(Math.random() * 3 + (Math.floor(level/toNextLevel))) + 1, maxFruits);
     for (let i = 0; i < numberOfFruits; i++) {
         const randomIndex = Math.floor(Math.random() * fruitTypes.length);
         const type = fruitTypes[randomIndex];
@@ -105,18 +117,19 @@ function generateFruits() {
         const x = isRightSide ? canvas.width : 0;
         const y = canvas.height;
         let angle = (Math.random() * (75 - 35) + 35) * (Math.PI / 180);
-        const direction = isRightSide ? -1 : 1; // Invert direction for right side
 
         if (isRightSide) {
-            angle = Math.PI - angle; // Adjust angle for right side
+            angle = Math.PI - angle; 
         }
-
         const speed = Math.random() * 1 + 6;
-        fruits.push(new Fruta(type, x, y, angle, speed, direction));
+        fruits.push(new Fruta(type, x, y, angle, speed, false, 'normal'));
     }
+    const shootSound = new Audio('fx/shoot.mp3');
+    shootSound.play();
+
+    level+=1;
 }
 
-// Function to check if fruit is cut
 function checkCut(x, y) {
     fruits.forEach(fruit => {
         const distX = x - fruit.x;
@@ -127,14 +140,13 @@ function checkCut(x, y) {
     });
 }
 
-// Añadir la función para verificar si el cursor está sobre alguna fruta
 function checkCursorHover(x, y) {
     let cursorOverFruit = false;
     fruits.forEach(fruit => {
         const distX = x - fruit.x;
         const distY = y - fruit.y;
         if (distX >= 0 && distX <= fruit.width && distY >= 0 && distY <= fruit.height) {
-            if(!fruit.cut){
+            if (!fruit.cut) {
                 cursorOverFruit = true;
             }
         }
@@ -147,7 +159,6 @@ function checkCursorHover(x, y) {
     }
 }
 
-// Function to draw the score and lives
 function drawHUD() {
     ctx.font = '30px MinecraftFont';
     ctx.shadowColor = 'black';
@@ -155,12 +166,15 @@ function drawHUD() {
     ctx.fillStyle = '#FFF';
     ctx.fillText('Score: ' + score, 10, 30);
     ctx.fillText('High Score: ' + highScore, canvas.width / 2 - 100, 30);
+    ctx.fillText('Level: ' + (Math.floor(level/toNextLevel)+1),  10, canvas.height - 10);
 
     for (let i = 0; i < 3; i++) {
         const heartImg = new Image();
         heartImg.src = i < lives ? heartSprites.normal : heartSprites.noHeart;
-        ctx.drawImage(heartImg, canvas.width - (i + 1) * 40, 10, 30, 30);
+        ctx.drawImage(heartImg, canvas.width - (i + 1) * 60, 10, 45, 45);
     }
+
+    const pouseImg = new Image();
 }
 
 // Game loop
@@ -170,13 +184,16 @@ function gameLoop() {
     drawHUD();
     fruits.forEach((fruit, index) => {
         fruit.update();
-        if (fruit.y > canvas.height && !fruit.cut) {
-            lives -= 1;
-            fruits.splice(index, 1);
-            if (lives === 0) {
-
-                alert('Game Over');
-                document.location.reload();
+        if (fruit.y > canvas.height) {
+            if (fruit.cut) {
+                fruits.splice(index, 1);
+            } else {
+                lives -= 1;
+                fruits.splice(index, 1);
+                if (lives === 0) {
+                    alert('Game Over');
+                    document.location.reload();
+                }
             }
         }
     });
@@ -184,11 +201,8 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
-// Generate fruits continuouslye
-setInterval(generateFruits, Math.floor(Math.random() * 4000 + 2500));
-
 // Event listeners
-canvas.addEventListener("click", (e) => {
+canvas.addEventListener("mousedown", (e) => {
     const rect = canvas.getBoundingClientRect();
     let xmouse = e.clientX - rect.left;
     let ymouse = e.clientY - rect.top;
@@ -205,4 +219,4 @@ canvas.addEventListener('mousemove', (e) => {
 // Initialize game
 loadImages();
 gameLoop();
-generateFruits();
+setInterval(generateFruits, Math.random() * 1500 + 2500);
