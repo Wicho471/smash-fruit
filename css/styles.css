@@ -1,0 +1,42 @@
+body, html {
+    height: 100%;
+    margin: 0;
+    background-color: #000;
+    font-family: 'MinecraftFont', sans-serif;
+    user-select: none
+}
+header{
+    margin: 20px;
+}
+#canvas {
+    border: 3px solid white; 
+}
+.rainbow-text span {
+    display: inline-block;
+    font-size: 3rem;
+    font-weight: bold;
+    color: white;
+    animation: rainbow-border 3s infinite;
+    margin-right: 5px; 
+}
+.rainbow-text {
+    display: flex;
+    justify-content: center;
+    
+}
+@keyframes rainbow-border {
+    0% { text-shadow: 0 0 20px red; }
+    14% { text-shadow: 0 0 20px orange; }
+    28% { text-shadow: 0 0 20px yellow; }
+    42% { text-shadow: 0 0 20px green; }
+    57% { text-shadow: 0 0 20px blue; }
+    71% { text-shadow: 0 0 20px indigo; }
+    85% { text-shadow: 0 0 20px violet; }
+    100% { text-shadow: 0 0 20px red; }
+}
+
+footer{
+    color: white;
+    font-size: 30px;
+    margin: 20px;
+}
